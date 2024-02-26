@@ -1,9 +1,12 @@
 package main
 
 import (
+	"auth/internal/app"
 	"auth/internal/config"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 const (
@@ -20,10 +23,21 @@ func main() {
 	log.Info("starting application",
 		slog.Any("config", cfg),
 	)
-
+	application := app.New(log, cfg.GRPC.Port, cfg.StoragePath, cfg.TokenTTL)
+	go application.GRPCSrv.Run()
 	// TODO: инициализация приложения
 
 	// TODO: запустить сервер приложения
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+
+	<-stop
+
+	log.Info("stopping application")
+
+	application.GRPCSrv.Stop()
+
+	log.Info("application stop")
 }
 
 func setupLogger(env string) *slog.Logger {
